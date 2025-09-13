@@ -24,8 +24,8 @@ export function Profile() {
   };
 
   const currentAvatar = avatarsData.find(a => a.id === userProfile?.avatar_id);
-  const totalQuestions = (userProfile?.total_correct || 0) + (userProfile?.total_wrong || 0);
-  const accuracy = totalQuestions > 0 ? Math.round(((userProfile?.total_correct || 0) / totalQuestions) * 100) : 0;
+  const totalQuestions = (userProfile?.total_correct_answers || 0) + (userProfile?.total_wrong || 0);
+  const accuracy = totalQuestions > 0 ? Math.round(((userProfile?.total_correct_answers || 0) / totalQuestions) * 100) : 0;
 
   // Calculate learning progress based on unlocked chapters vs total chapters for class
   const classChapters = chaptersData.filter(ch => ch.class_level === userProfile?.class_level);
@@ -214,12 +214,12 @@ export function Profile() {
                 <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                   <div className="flex items-center space-x-2 bg-gradient-to-r from-yellow-100 to-orange-100 px-4 py-2 rounded-full border border-yellow-200/50 shadow-sm">
                     <Coins className="h-4 w-4 text-yellow-600" />
-                    <span className="font-bold text-yellow-700">{userProfile?.money ?? 0}</span>
+                    <span className="font-bold text-yellow-700">{userProfile?.money || 0}</span>
                     <span className="text-xs text-yellow-600">coins</span>
                   </div>
                   <div className="flex items-center space-x-2 bg-gradient-to-r from-emerald-100 to-green-100 px-4 py-2 rounded-full border border-emerald-200/50 shadow-sm">
                     <Trophy className="h-4 w-4 text-emerald-600" />
-                    <span className="font-bold text-emerald-700">{userProfile?.total_correct}</span>
+                    <span className="font-bold text-emerald-700">{userProfile?.total_correct || 0}</span>
                     <span className="text-xs text-emerald-600">correct</span>
                   </div>
                   <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-indigo-100 px-4 py-2 rounded-full border border-blue-200/50 shadow-sm">
@@ -227,13 +227,13 @@ export function Profile() {
                     <span className="font-bold text-blue-700">{userProfile?.unlocked_chapters?.length || 1}</span>
                     <span className="text-xs text-blue-600">chapters</span>
                   </div>
-                </div>
+                <span className="font-bold text-green-400">{userProfile.total_correct_answers || 0}</span>
                 {/* Logout Button */}
                 <button
                   className="mt-6 bg-gradient-to-r from-red-600 to-pink-600 text-white px-8 py-3 rounded-full shadow-xl hover:from-red-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 font-semibold"
                   onClick={async () => {
                     await signOut();
-                    navigate('/auth');
+                    width: totalQuestions > 0 ? `${((userProfile.total_correct_answers || 0) / totalQuestions) * 100}%` : '0%'
                   }}
                 >
                   Logout
