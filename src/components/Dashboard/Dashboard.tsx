@@ -159,7 +159,7 @@ export function Dashboard() {
                   <Coins className="h-7 w-7 text-white animate-bounce" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-yellow-400 group-hover:text-yellow-300 transition-colors">{userProfile.total_coins || userProfile.money || 0}</div>
+                  <div className="text-3xl font-bold text-yellow-400 group-hover:text-yellow-300 transition-colors">{userProfile.total_coins || 0}</div>
                   <div className="text-sm text-yellow-200">Coins</div>
                 </div>
               </div>
