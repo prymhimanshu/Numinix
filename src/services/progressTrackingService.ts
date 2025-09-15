@@ -577,7 +577,7 @@ Remember, every expert was once a beginner. You're doing great! 💪`;
         .select('*')
         .eq('user_id', userId)
         .eq('chapter_id', chapterId)
-        .single();
+        .maybeSingle();
       const { data: attempts } = await supabase
         .from('question_attempts')
         .select('*')
