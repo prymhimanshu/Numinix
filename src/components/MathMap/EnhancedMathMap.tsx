@@ -24,10 +24,6 @@ export function EnhancedMathMap({ chapterDiagnostics, onChapterClick, setShowNav
   useEffect(() => {
     if (userProfile) {
       loadUserAnalytics();
-    }
-  }, [userProfile]);
-
-  const loadUserAnalytics = async () => {
     if (!userProfile) return;
 
     try {
@@ -93,6 +89,20 @@ export function EnhancedMathMap({ chapterDiagnostics, onChapterClick, setShowNav
   const handleExploreChapter = (chapter: any) => {
     setSelectedChapter(chapter);
     setShowRoadmapModal(true);
+  };
+
+  const handleUnlock = async (chapterId: string, cost: number) => {
+    if (!userProfile) return;
+    
+    const currentCoins = userProfile.total_coins || userProfile.money || 0;
+    if (currentCoins < cost) return;
+    
+    const newUnlocked = [...unlockedChapters, chapterId];
+    await updateUserProfile({
+      total_coins: currentCoins - cost,
+      money: currentCoins - cost,
+      unlocked_chapters: newUnlocked
+    });
   };
 
   const getChapterIcon = (status: string) => {

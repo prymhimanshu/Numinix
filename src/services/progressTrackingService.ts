@@ -189,6 +189,12 @@ export class ProgressTrackingService {
 
   // Generate AI-powered roadmap
   static async generateAIRoadmap(userId: string, chapterId: string, data: any): Promise<any> {
+    // Get chapter information from chapters.json
+    const chaptersData = await import('../data/chapters.json');
+    const chapterInfo = chaptersData.default.find((ch: any) => ch.id === chapterId);
+    const chapterName = chapterInfo?.chapter || chapterId;
+    const chapterTopics = chapterInfo?.topics || [];
+    
     let difficultyLevel: string = 'unknown';
     let prereqConcepts: string[] = [];
     let priorityConcepts: string[] = [];
@@ -218,15 +224,20 @@ export class ProgressTrackingService {
         // Fallback for difficultyLevel
         difficultyLevel = typeof data?.difficulty_level === 'string' ? data.difficulty_level : 'unknown';
       }
-      let prompt = `You are an expert math tutor creating a personalized learning roadmap for a student.
+      let prompt = `You are an expert math tutor creating a personalized learning roadmap for a student for the specific chapter: "${chapterName}".
+
+IMPORTANT: Focus ONLY on the chapter "${chapterName}" and its topics: ${chapterTopics.join(', ')}. Do not include content from other chapters.
 
 Student Performance Data:
-- Chapter: ${chapterId}
+- Chapter: ${chapterName} (${chapterId})
+- Chapter Topics: ${chapterTopics.join(', ')}
 - Diagnostic Score: ${score}%
 - Strengths: ${data.strongAreas?.join(', ') || 'None identified'}
 - Weak Areas: ${data.weakAreas?.join(', ') || 'None identified'}
 - Knowledge Gaps: ${knowledgeGaps}
 - Recent Performance: ${data.recentAttempts?.length || 0} recent attempts
+
+Create a roadmap SPECIFICALLY for "${chapterName}" chapter only. Each step should focus on topics within this chapter: ${chapterTopics.join(', ')}.
 
 For each step, provide a realistic, data-driven estimate for "estimated_time_minutes" based on:
 - The student's diagnostic score and performance
@@ -236,32 +247,35 @@ For each step, provide a realistic, data-driven estimate for "estimated_time_min
 
 Create a personalized roadmap as JSON with this exact structure:
 {
-  "roadmap_title": "Personalized Learning Path for [Chapter]",
+  "roadmap_title": "Personalized Learning Path for ${chapterName}",
   "student_level": "beginner/intermediate/advanced",
   "priority_concepts": ["concept1", "concept2", "concept3"],
   "steps": [
     {
       "step_number": 1,
-      "title": "Review Prerequisites",
-      "description": "Focus on foundational concepts",
-      "concepts": ["basic concept 1", "basic concept 2"],
+      "title": "Step title specific to ${chapterName}",
+      "description": "Description specific to ${chapterName} topics",
+      "concepts": ["concept from ${chapterTopics.join(' or ')}"],
       "estimated_time_minutes": 30,
+      "ai_content": "Detailed explanation specific to ${chapterName} and student's level",
       "difficulty": "easy",
       "resources": ["explanation", "practice problems"],
       "success_criteria": "80% accuracy on practice questions"
     }
   ],
   "study_tips": ["tip1", "tip2", "tip3"],
-  "motivation_message": "Encouraging message for the student",
-  "next_milestone": "What student should achieve next"
+  "motivation_message": "Encouraging message specific to ${chapterName} progress",
+  "next_milestone": "Next milestone specific to ${chapterName} mastery"
 }
 
 Requirements:
-- 5-8 steps in logical learning order
-- Address weak areas first
+- 5-8 steps in logical learning order for ${chapterName} ONLY
+- Address weak areas within this chapter first
 - Build on strengths
+- Each step must include "ai_content" with detailed, personalized explanation
 - Include specific, realistic time estimates for each step
 - Motivational and encouraging tone
+- Focus ONLY on ${chapterName} chapter content
 - Return only valid JSON`;
 
       const response = await fetch(GROQ_PROXY_URL, {
@@ -295,59 +309,73 @@ Requirements:
 
     // Fallback roadmap
     return {
-      roadmap_title: `Personalized Learning Path`,
+      roadmap_title: `Personalized Learning Path for ${chapterName}`,
       student_level: difficultyLevel,
       priority_concepts: Array.isArray(data.weakAreas) ? data.weakAreas.slice(0, 3) : [],
       steps: [
         {
           step_number: 1,
-          title: "Review Fundamentals",
-          description: "Strengthen your foundation",
-          concepts: prereqConcepts,
+          title: `Introduction to ${chapterName}`,
+          description: `Build foundation for ${chapterName}`,
+          concepts: chapterTopics.slice(0, 2),
           estimated_time_minutes: 45,
+          ai_content: `Welcome to ${chapterName}! Let's start with the basics and build your understanding step by step. This chapter will help you master important mathematical concepts.`,
           difficulty: "easy",
           resources: ["concept review", "basic practice"],
-          success_criteria: "Complete understanding of basics"
+          success_criteria: `Complete understanding of ${chapterName} basics`
         },
         {
           step_number: 2,
-          title: "Practice Core Concepts",
-          description: "Apply your knowledge",
-          concepts: data.weakAreas.slice(0, 2),
+          title: `Master ${chapterName} Core Concepts`,
+          description: `Apply your knowledge of ${chapterName}`,
+          concepts: chapterTopics.slice(2, 4),
           estimated_time_minutes: 60,
+          ai_content: `Now let's dive deeper into ${chapterName}. Practice these concepts with real examples and build your confidence.`,
           difficulty: "medium",
           resources: ["guided practice", "examples"],
-          success_criteria: "70% accuracy on practice problems"
+          success_criteria: `70% accuracy on ${chapterName} practice problems`
         }
       ],
       study_tips: [
-        "Practice daily for 15-20 minutes",
+        `Practice ${chapterName} daily for 15-20 minutes`,
         "Focus on understanding, not memorization",
-        "Ask questions when stuck"
+        `Review ${chapterName} examples when stuck`
       ],
-      motivation_message: "You're making great progress! Keep up the excellent work! 🌟",
-      next_milestone: "Master the core concepts with 80% accuracy"
+      motivation_message: `You're making great progress in ${chapterName}! Keep up the excellent work! 🌟`,
+      next_milestone: `Master ${chapterName} core concepts with 80% accuracy`
     };
   }
 
   // Regenerate AI insights based on latest performance
-  static async regenerateAIInsights(userId: string): Promise<void> {
+  static async regenerateAIInsights(userId: string, chapterId?: string): Promise<void> {
     try {
       // Get recent performance data
-      const { data: recentAttempts } = await supabase
+      let attemptsQuery = supabase
         .from('question_attempts')
         .select('*')
         .eq('user_id', userId)
         .order('attempted_at', { ascending: false })
         .limit(50);
+      
+      if (chapterId) {
+        attemptsQuery = attemptsQuery.eq('chapter_id', chapterId);
+      }
+      
+      const { data: recentAttempts } = await attemptsQuery;
 
-      const { data: mastery } = await supabase
+      let masteryQuery = supabase
         .from('concept_mastery')
         .select('*')
         .eq('user_id', userId);
+      
+      if (chapterId) {
+        masteryQuery = masteryQuery.eq('chapter_id', chapterId);
+      }
+      
+      const { data: mastery } = await masteryQuery;
 
       // Generate fresh AI insights
-      const insights = await this.generateFreshAIInsights(userId, {
+      const insights = await this.generateFreshAIInsights(userId, chapterId, {
         recentAttempts: recentAttempts || [],
         masteryData: mastery || []
       });
@@ -357,8 +385,8 @@ Requirements:
         .from('ai_improvements')
         .insert({
           user_id: userId,
-          topic: 'Overall Performance',
-          user_notes: 'Auto-generated based on recent activity',
+          topic: chapterId ? `Chapter ${chapterId} Performance` : 'Overall Performance',
+          user_notes: chapterId ? `Auto-generated for chapter ${chapterId}` : 'Auto-generated based on recent activity',
           improvements: insights
         });
 
@@ -369,31 +397,33 @@ Requirements:
   }
 
   // Generate fresh AI insights
-  static async generateFreshAIInsights(userId: string, data: any): Promise<string[]> {
+  static async generateFreshAIInsights(userId: string, chapterId: string | undefined, data: any): Promise<string[]> {
     try {
       const conceptStats = this.analyzeConceptPerformance(data.recentAttempts);
       const recentAccuracy = data.recentAttempts.length > 0 
         ? (data.recentAttempts.filter((a: any) => a.is_correct).length / data.recentAttempts.length) * 100 
         : 0;
 
-      let prompt = `You are an AI math tutor analyzing a student's recent performance. Provide personalized insights and improvement suggestions.
+      let prompt = `You are an AI math tutor analyzing a student's recent performance${chapterId ? ` for chapter ${chapterId}` : ''}. Provide personalized insights and improvement suggestions.
 
-Recent Performance:
+Recent Performance${chapterId ? ` in ${chapterId}` : ''}:
 - Recent Questions: ${data.recentAttempts.length}
 - Recent Accuracy: ${recentAccuracy.toFixed(1)}%
 - Concept Performance: ${Object.entries(conceptStats).map(([concept, stats]: [string, any]) => 
   `${concept}: ${stats.accuracy.toFixed(1)}%`).join(', ')}
 - Mastered Concepts: ${data.masteryData.filter((m: any) => m.mastery_level >= 0.8).length}
+${chapterId ? `\nFocus specifically on ${chapterId} chapter performance and provide chapter-specific insights.` : ''}
 
-Generate 5-7 specific, actionable insights as a JSON array of strings:
+Generate 5-7 specific, actionable insights as a JSON array of strings${chapterId ? ` focused on this chapter` : ''}:
 - Identify patterns in performance
 - Suggest specific improvement strategies
 - Highlight recent progress
 - Provide encouragement
 - Include next steps
+${chapterId ? '- Focus on chapter-specific concepts and topics' : ''}
 
 Example format:
-["Your accuracy in Algebra has improved by 15% this week! 🎉", "Focus on practicing Geometry problems for 10 minutes daily 📐"]
+["Your accuracy in ${chapterId || 'Algebra'} has improved by 15% this week! 🎉", "Focus on practicing ${chapterId || 'Geometry'} problems for 10 minutes daily 📐"]
 
 Return only the JSON array of insights.`;
 
@@ -669,15 +699,20 @@ Remember, every expert was once a beginner. You're doing great! 💪`;
   }
 
   // Get latest AI insights for user
-  static async getLatestAIInsights(userId: string): Promise<string[]> {
+  static async getLatestAIInsights(userId: string, chapterId?: string): Promise<string[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ai_improvements')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
+      
+      if (chapterId) {
+        query = query.eq('topic', `Chapter ${chapterId} Performance`);
+      }
+      
+      const { data, error } = await query.maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
       return data?.improvements || [];

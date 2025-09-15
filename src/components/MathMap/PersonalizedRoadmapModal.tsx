@@ -64,12 +64,15 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose, setS
 
     setLoading(true);
     try {
+      // First regenerate AI insights specifically for this chapter
+      await ProgressTrackingService.regenerateAIInsights(userProfile.id, chapterId);
+      
       // Load personalized roadmap
       const roadmapData = await ProgressTrackingService.getPersonalizedRoadmap(userProfile.id, chapterId);
       setRoadmap(roadmapData);
 
       // Load AI insights
-      const insights = await ProgressTrackingService.getLatestAIInsights(userProfile.id);
+      const insights = await ProgressTrackingService.getLatestAIInsights(userProfile.id, chapterId);
       setAiInsights(insights);
 
       // Load personalized content for chapter topics
@@ -112,8 +115,8 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose, setS
     
     setLoading(true);
     try {
-      await ProgressTrackingService.regenerateAIInsights(userProfile.id);
-      const newInsights = await ProgressTrackingService.getLatestAIInsights(userProfile.id);
+      await ProgressTrackingService.regenerateAIInsights(userProfile.id, chapterId);
+      const newInsights = await ProgressTrackingService.getLatestAIInsights(userProfile.id, chapterId);
       setAiInsights(newInsights);
     } catch (error) {
       console.error('Error refreshing insights:', error);
